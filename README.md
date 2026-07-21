@@ -38,6 +38,11 @@ contains no `sorry`.**
   matrices with that trace and determinant and whose morphisms are
   intertwining integer matrices, as a literal `CategoryTheory.Category`;
   includes the companion-matrix object and 2×2 Cayley–Hamilton.
+- **The bijection 𝒬(α) ↔ 𝓜(α)** (`QF.lean`, `qfEquiv`): binary quadratic
+  forms of discriminant `t² - 4d` (defined by hand — Mathlib has no
+  classical form theory) correspond exactly to objects of `𝓜(α)`, via
+  `q(x,y) = -det[A·(x,y)ᵀ | (x,y)ᵀ]`; integrality of the inverse map is
+  forced by the discriminant condition.
 
 The statements are additionally validated by compiled-in `#guard`
 numerical sanity checks (brute-forced kernels over small `ℤ/nℤ`,

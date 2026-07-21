@@ -29,6 +29,7 @@ open Matrix CategoryTheory
 
 /-- An object of the matrix category `𝓜(α)` for `α` of trace `t` and norm
 `d`: a 2×2 integer matrix with that trace and determinant. -/
+@[ext]
 structure MObj (t d : ℤ) where
   mat : Matrix (Fin 2) (Fin 2) ℤ
   trace_eq : mat.trace = t
