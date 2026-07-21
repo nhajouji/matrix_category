@@ -78,6 +78,42 @@ def companion (t d : ℤ) : MObj t d where
 /-- `α` itself is an endomorphism of every object. -/
 def alphaEnd (A : MObj t d) : A ⟶ A := ⟨A.mat, rfl⟩
 
+/-! ### The conjugation action
+
+Units of `M₂(ℤ)` act on `𝓜(α)` by conjugation — base change of the
+underlying lattice. Orbits are the isomorphism classes of objects. -/
+
+/-- Conjugation of objects by units of `M₂(ℤ)`. -/
+def conj (P : (Matrix (Fin 2) (Fin 2) ℤ)ˣ) (A : MObj t d) : MObj t d where
+  mat := (P : Matrix (Fin 2) (Fin 2) ℤ) * A.mat * (↑P⁻¹ : Matrix (Fin 2) (Fin 2) ℤ)
+  trace_eq := by
+    rw [Matrix.trace_mul_cycle, Units.inv_mul, one_mul]
+    exact A.trace_eq
+  det_eq := by
+    rw [Matrix.det_mul, Matrix.det_mul,
+      mul_comm ((P : Matrix (Fin 2) (Fin 2) ℤ).det) A.mat.det, mul_assoc,
+      ← Matrix.det_mul, Units.mul_inv, Matrix.det_one, mul_one]
+    exact A.det_eq
+
+theorem conj_one (A : MObj t d) : conj 1 A = A := by
+  ext i j
+  simp [conj]
+
+theorem conj_mul (P Q : (Matrix (Fin 2) (Fin 2) ℤ)ˣ) (A : MObj t d) :
+    conj (P * Q) A = conj P (conj Q A) := by
+  ext i j
+  simp [conj, Units.val_mul, _root_.mul_inv_rev, mul_assoc]
+
+instance : MulAction (Matrix (Fin 2) (Fin 2) ℤ)ˣ (MObj t d) where
+  smul := conj
+  one_smul := conj_one
+  mul_smul := conj_mul
+
+@[simp]
+theorem smul_mat (P : (Matrix (Fin 2) (Fin 2) ℤ)ˣ) (A : MObj t d) :
+    (P • A).mat =
+      (P : Matrix (Fin 2) (Fin 2) ℤ) * A.mat * (↑P⁻¹ : Matrix (Fin 2) (Fin 2) ℤ) := rfl
+
 /-- Sanity check of the design: every object satisfies the same quadratic
 `A² = t·A - d` as `α` (Cayley–Hamilton for 2×2, from the trace and
 determinant equations), stated entrywise. -/

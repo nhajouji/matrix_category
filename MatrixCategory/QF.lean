@@ -132,6 +132,70 @@ def qfEquiv (t d : ℤ) : MObj t d ≃ BQF (t ^ 2 - 4 * d) where
       omega
     · simp [ofBQF, toBQF]
 
+/-! ### Equivariance
+
+Conjugating an object corresponds to the classical linear change of
+variables on its form, twisted by `det P`. The key trick: for a unimodular
+`P` the inverse is `det P • adjugate P` (since `det P = ±1` is its own
+inverse), which makes the whole identity one polynomial computation modulo
+the single relation `(det P)² = 1`. -/
+
+/-- For a unimodular matrix, the inverse is `det P • adjugate P`. -/
+theorem unit_inv_eq_det_smul_adjugate (P : (Matrix (Fin 2) (Fin 2) ℤ)ˣ) :
+    (↑P⁻¹ : Matrix (Fin 2) (Fin 2) ℤ) =
+      (P : Matrix (Fin 2) (Fin 2) ℤ).det • (P : Matrix (Fin 2) (Fin 2) ℤ).adjugate := by
+  have hsq : (P : Matrix (Fin 2) (Fin 2) ℤ).det * (P : Matrix (Fin 2) (Fin 2) ℤ).det = 1 := by
+    rcases Int.isUnit_iff.mp ((Matrix.isUnit_iff_isUnit_det _).mp P.isUnit) with h | h <;>
+      rw [h] <;> norm_num
+  have key : (P : Matrix (Fin 2) (Fin 2) ℤ) *
+      ((P : Matrix (Fin 2) (Fin 2) ℤ).det • (P : Matrix (Fin 2) (Fin 2) ℤ).adjugate) = 1 := by
+    rw [Matrix.mul_smul, Matrix.mul_adjugate, smul_smul, hsq, one_smul]
+  calc (↑P⁻¹ : Matrix (Fin 2) (Fin 2) ℤ)
+      = ↑P⁻¹ * ((P : Matrix (Fin 2) (Fin 2) ℤ) *
+          ((P : Matrix (Fin 2) (Fin 2) ℤ).det • (P : Matrix (Fin 2) (Fin 2) ℤ).adjugate)) := by
+        rw [key, mul_one]
+    _ = (↑P⁻¹ * (P : Matrix (Fin 2) (Fin 2) ℤ)) *
+          ((P : Matrix (Fin 2) (Fin 2) ℤ).det • (P : Matrix (Fin 2) (Fin 2) ℤ).adjugate) := by
+        rw [mul_assoc]
+    _ = (P : Matrix (Fin 2) (Fin 2) ℤ).det • (P : Matrix (Fin 2) (Fin 2) ℤ).adjugate := by
+        rw [Units.inv_mul, one_mul]
+
+/-- **Equivariance of the bijection** (`prop:qf_matrix_bijection`, action
+layer): conjugating an object of `𝓜(α)` by a unimodular `P` corresponds to
+the linear change of variables by `P` on the attached form, twisted by
+`det P`. For `P ∈ SL₂(ℤ)` this is exactly proper equivalence of forms
+(`toBQF_smul_eval_of_det_eq_one`), so the bijection descends to
+`SL₂(ℤ)`-orbits: conjugacy classes in `𝓜(α)` ↔ proper form classes. -/
+theorem toBQF_smul_eval (P : (Matrix (Fin 2) (Fin 2) ℤ)ˣ) (A : MObj t d) (x y : ℤ) :
+    (P • A).toBQF.eval
+      ((P : Matrix (Fin 2) (Fin 2) ℤ) 0 0 * x + (P : Matrix (Fin 2) (Fin 2) ℤ) 0 1 * y)
+      ((P : Matrix (Fin 2) (Fin 2) ℤ) 1 0 * x + (P : Matrix (Fin 2) (Fin 2) ℤ) 1 1 * y) =
+      (P : Matrix (Fin 2) (Fin 2) ℤ).det * A.toBQF.eval x y := by
+  have hsq : (P : Matrix (Fin 2) (Fin 2) ℤ).det * (P : Matrix (Fin 2) (Fin 2) ℤ).det = 1 := by
+    rcases Int.isUnit_iff.mp ((Matrix.isUnit_iff_isUnit_det _).mp P.isUnit) with h | h <;>
+      rw [h] <;> norm_num
+  have hinv := unit_inv_eq_det_smul_adjugate P
+  rw [Matrix.det_fin_two] at hsq
+  simp only [toBQF, BQF.eval, smul_mat, hinv, Matrix.adjugate_fin_two,
+    Matrix.det_fin_two, Matrix.mul_apply, Matrix.smul_apply, Fin.sum_univ_two,
+    Matrix.cons_val', Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.head_cons,
+    Matrix.head_fin_const, Matrix.of_apply, smul_eq_mul]
+  linear_combination
+    (((P : Matrix (Fin 2) (Fin 2) ℤ) 0 0 * (P : Matrix (Fin 2) (Fin 2) ℤ) 1 1 -
+      (P : Matrix (Fin 2) (Fin 2) ℤ) 0 1 * (P : Matrix (Fin 2) (Fin 2) ℤ) 1 0) *
+     (A.mat 1 0 * x ^ 2 + (A.mat 1 1 - A.mat 0 0) * (x * y) - A.mat 0 1 * y ^ 2)) * hsq
+
+/-- Proper equivalence: for `P ∈ SL₂(ℤ)` the bijection is strictly
+equivariant. -/
+theorem toBQF_smul_eval_of_det_eq_one {P : (Matrix (Fin 2) (Fin 2) ℤ)ˣ}
+    (hP : (P : Matrix (Fin 2) (Fin 2) ℤ).det = 1) (A : MObj t d) (x y : ℤ) :
+    (P • A).toBQF.eval
+      ((P : Matrix (Fin 2) (Fin 2) ℤ) 0 0 * x + (P : Matrix (Fin 2) (Fin 2) ℤ) 0 1 * y)
+      ((P : Matrix (Fin 2) (Fin 2) ℤ) 1 0 * x + (P : Matrix (Fin 2) (Fin 2) ℤ) 1 1 * y) =
+      A.toBQF.eval x y := by
+  have h := toBQF_smul_eval P A x y
+  rwa [hP, one_mul] at h
+
 end MObj
 
 end MatrixCategory

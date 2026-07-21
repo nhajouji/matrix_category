@@ -43,6 +43,11 @@ contains no `sorry`.**
   classical form theory) correspond exactly to objects of `𝓜(α)`, via
   `q(x,y) = -det[A·(x,y)ᵀ | (x,y)ᵀ]`; integrality of the inverse map is
   forced by the discriminant condition.
+- **Equivariance** (`QF.lean`, `toBQF_smul_eval`): `GL₂(ℤ)` acts on `𝓜(α)`
+  by conjugation (a `MulAction`), and the bijection intertwines this with
+  the classical change-of-variables action on forms, twisted by `det P` —
+  strictly for `P ∈ SL₂(ℤ)`. Hence conjugacy classes in `𝓜(α)` correspond
+  to proper equivalence classes of forms.
 
 The statements are additionally validated by compiled-in `#guard`
 numerical sanity checks (brute-forced kernels over small `ℤ/nℤ`,
