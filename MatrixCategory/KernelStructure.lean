@@ -44,8 +44,8 @@ matrix level and concentrate all the number theory in one leaf:
 * `ker_lsmul_zmod` (**L4**): the kernel of multiplication by `d` on `ZMod n`
   is `ZMod (gcd d n)`.
 
-`ker_structure` composes L1–L4; the composition is fully written, so the
-remaining `sorry`s are exactly the unproven leaves.
+`ker_structure` composes L1–L4. All four leaves are proven — the theorem
+is complete with no `sorry`.
 -/
 
 namespace MatrixCategory

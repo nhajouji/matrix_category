@@ -356,7 +356,110 @@ of `t`, and any prime `q ∤ det` never divides both coordinates since
 theorem exists_good_t (M : Matrix (Fin 2) (Fin 2) ℤ) (hcont : content M = 1)
     (hdet : M.det ≠ 0) :
     ∃ t : ℤ, Int.gcd (M 0 0 + t * M 0 1) (M 1 0 + t * M 1 1) = 1 := by
-  sorry
+  classical
+  set D : ℕ := (M.det).natAbs with hD
+  have hD0 : D ≠ 0 := by simpa [hD, Int.natAbs_eq_zero] using hdet
+  set s : Finset ℕ := D.primeFactors with hs
+  -- For every prime `q`, some residue `τ` avoids killing both coordinates:
+  -- otherwise `τ = 0` and `τ = 1` force all four entries to vanish mod `q`,
+  -- contradicting `content M = 1`.
+  have hex : ∀ q : ℕ, q.Prime → ∃ τ : ZMod q,
+      ¬((M 0 0 : ZMod q) + τ * (M 0 1 : ZMod q) = 0 ∧
+        (M 1 0 : ZMod q) + τ * (M 1 1 : ZMod q) = 0) := by
+    intro q hq
+    haveI : Fact q.Prime := ⟨hq⟩
+    by_contra hall
+    push_neg at hall
+    obtain ⟨h00, h10⟩ := hall 0
+    obtain ⟨h01, h11⟩ := hall 1
+    rw [zero_mul, add_zero] at h00 h10
+    rw [one_mul] at h01 h11
+    rw [h00, zero_add] at h01
+    rw [h10, zero_add] at h11
+    have hdvd : (q : ℤ) ∣ content M := by
+      rw [dvd_content_iff]
+      intro i j
+      rw [← ZMod.intCast_zmod_eq_zero_iff_dvd]
+      fin_cases i <;> fin_cases j
+      · exact h00
+      · exact h01
+      · exact h10
+      · exact h11
+    rw [hcont] at hdvd
+    have hq1 : q ∣ 1 := by exact_mod_cast hdvd
+    exact hq.one_lt.ne' (Nat.dvd_one.mp hq1)
+  -- Choose a good residue for each prime factor of the determinant.
+  have hex' : ∀ i : {x // x ∈ s}, ∃ τ : ZMod (i : ℕ),
+      ¬((M 0 0 : ZMod (i : ℕ)) + τ * (M 0 1 : ZMod (i : ℕ)) = 0 ∧
+        (M 1 0 : ZMod (i : ℕ)) + τ * (M 1 1 : ZMod (i : ℕ)) = 0) :=
+    fun i => hex i (Nat.prime_of_mem_primeFactors i.2)
+  choose τ hτ using hex'
+  -- Chinese remainder: a single `t` matching every `τ` simultaneously.
+  have hcop : Pairwise (Function.onFun Nat.Coprime fun i : {x // x ∈ s} => (i : ℕ)) := by
+    intro i j hij
+    exact (Nat.coprime_primes (Nat.prime_of_mem_primeFactors i.2)
+      (Nat.prime_of_mem_primeFactors j.2)).mpr fun h => hij (Subtype.ext h)
+  set P : ℕ := ∏ i : {x // x ∈ s}, (i : ℕ) with hP
+  haveI : NeZero P := ⟨Finset.prod_ne_zero_iff.mpr
+    fun i _ => (Nat.prime_of_mem_primeFactors i.2).ne_zero⟩
+  set e := ZMod.prodEquivPi (fun i : {x // x ∈ s} => (i : ℕ)) hcop with he
+  obtain ⟨t, ht⟩ : ∃ t : ℤ, (t : ZMod P) = e.symm τ :=
+    ⟨((e.symm τ).val : ℤ), by push_cast; exact ZMod.natCast_rightInverse _⟩
+  have hcomp : ∀ i : {x // x ∈ s}, ((t : ℤ) : ZMod (i : ℕ)) = τ i := by
+    intro i
+    have h1 : e (t : ZMod P) i = τ i := by rw [ht, RingEquiv.apply_symm_apply]
+    rwa [he, ZMod.prodEquivPi_apply, map_intCast] at h1
+  -- `t` works: any prime dividing the gcd yields a contradiction.
+  refine ⟨t, ?_⟩
+  by_contra hgcd
+  obtain ⟨p, hp, hpdvd⟩ := Nat.exists_prime_and_dvd hgcd
+  haveI : Fact p.Prime := ⟨hp⟩
+  have hw0 : (p : ℤ) ∣ M 0 0 + t * M 0 1 :=
+    (Int.natCast_dvd_natCast.mpr hpdvd).trans (Int.gcd_dvd_left _ _)
+  have hw1 : (p : ℤ) ∣ M 1 0 + t * M 1 1 :=
+    (Int.natCast_dvd_natCast.mpr hpdvd).trans (Int.gcd_dvd_right _ _)
+  have hz0 : (M 0 0 : ZMod p) + (t : ZMod p) * (M 0 1 : ZMod p) = 0 := by
+    have h := (ZMod.intCast_zmod_eq_zero_iff_dvd _ p).mpr hw0
+    push_cast at h
+    linear_combination h
+  have hz1 : (M 1 0 : ZMod p) + (t : ZMod p) * (M 1 1 : ZMod p) = 0 := by
+    have h := (ZMod.intCast_zmod_eq_zero_iff_dvd _ p).mpr hw1
+    push_cast at h
+    linear_combination h
+  by_cases hps : p ∈ s
+  · -- `p ∣ det`: contradicts the choice of `τ` at `p`
+    rw [hcomp ⟨p, hps⟩] at hz0 hz1
+    exact hτ ⟨p, hps⟩ ⟨hz0, hz1⟩
+  · -- `p ∤ det`: `M` is invertible mod `p`, but kills `(1, t) ≠ 0`
+    have hpD : ¬p ∣ D := fun h => hps (Nat.mem_primeFactors.mpr ⟨hp, h, hD0⟩)
+    have hdetp : ((M.det : ℤ) : ZMod p) ≠ 0 := by
+      intro hcon
+      rw [ZMod.intCast_zmod_eq_zero_iff_dvd, ← Int.dvd_natAbs] at hcon
+      exact hpD (Int.natCast_dvd_natCast.mp hcon)
+    set Mb : Matrix (Fin 2) (Fin 2) (ZMod p) :=
+      M.map (Int.cast : ℤ → ZMod p) with hMb
+    have hdetb : Mb.det ≠ 0 := by
+      intro hcon
+      apply hdetp
+      have hmap := RingHom.map_det (Int.castRingHom (ZMod p)) M
+      rw [RingHom.mapMatrix_apply] at hmap
+      rw [hMb, show M.map (Int.cast : ℤ → ZMod p) =
+        M.map ⇑(Int.castRingHom (ZMod p)) from rfl, ← hmap] at hcon
+      exact hcon
+    have hMbunit : IsUnit Mb :=
+      (Matrix.isUnit_iff_isUnit_det _).mpr (isUnit_iff_ne_zero.mpr hdetb)
+    have hinj := Matrix.mulVec_injective_iff_isUnit.mpr hMbunit
+    have hker : Mb.mulVec ![1, (t : ZMod p)] = 0 := by
+      funext i
+      fin_cases i
+      · simp [hMb, Matrix.mulVec, Matrix.vecHead, Matrix.vecTail]
+        linear_combination hz0
+      · simp [hMb, Matrix.mulVec, Matrix.vecHead, Matrix.vecTail]
+        linear_combination hz1
+    have hv0 : ![(1 : ZMod p), (t : ZMod p)] = 0 := by
+      apply hinj
+      rw [hker, Matrix.mulVec_zero]
+    exact one_ne_zero (congrFun hv0 0)
 
 /-- Diagonalization of a content-1 matrix with nonzero determinant: the good
 `t` plus one Bézout step give `diag(1, δ)` — the corner 1 makes the
