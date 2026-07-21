@@ -139,6 +139,16 @@ theorem content_unit_mul {n : ℕ} (A : Matrix (Fin n) (Fin n) ℤ)
     rw [← mul_assoc] at h2
     exact dvd_trans h1 h2
 
+/-- The content scales: `content (c • M) = c * content M` for `c ≥ 0`. -/
+theorem content_smul {n k : ℕ} (c : ℤ) (M : Matrix (Fin n) (Fin k) ℤ)
+    (hc : 0 ≤ c) : content (c • M) = c * content M := by
+  unfold content
+  rw [show (fun p : Fin n × Fin k => (c • M) p.1 p.2) =
+    fun p : Fin n × Fin k => c * M p.1 p.2 from rfl]
+  rw [Finset.gcd_mul_left]
+  congr 1
+  rw [← Int.abs_eq_normalize, abs_of_nonneg hc]
+
 /-- The content of `diag(x, y)` with `0 ≤ x` and `x ∣ y` is `x`. -/
 theorem content_diagonal {x y : ℤ} (hx : 0 ≤ x) (hxy : x ∣ y) :
     content (Matrix.diagonal ![x, y]) = x := by
@@ -336,15 +346,105 @@ theorem exists_chained_diagonalization_of_det_eq_zero
       exact hUV
     · exact det_eq_zero_aux M hdet hcol
 
-/-- Existence of some nonneg chained diagonalization, nondegenerate case.
-Route: factor out the content, represent a primitive vector via CRT over the
-primes dividing the determinant, then a single Bézout step. -/
+/-- **The number-theoretic core.** A content-1 matrix with nonzero
+determinant maps some vector `(1, t)ᵀ` to a *primitive* vector. Proof plan
+(CRT over the primes dividing the determinant): a prime `q` for which every
+`t` fails would divide all four entries (evaluate at `t = 0, 1`),
+contradicting content 1; so each `q ∣ det` forbids at most one residue class
+of `t`, and any prime `q ∤ det` never divides both coordinates since
+`(1, t)` is nonzero mod `q` and `M` is invertible mod `q`. -/
+theorem exists_good_t (M : Matrix (Fin 2) (Fin 2) ℤ) (hcont : content M = 1)
+    (hdet : M.det ≠ 0) :
+    ∃ t : ℤ, Int.gcd (M 0 0 + t * M 0 1) (M 1 0 + t * M 1 1) = 1 := by
+  sorry
+
+/-- Diagonalization of a content-1 matrix with nonzero determinant: the good
+`t` plus one Bézout step give `diag(1, δ)` — the corner 1 makes the
+row-clearing unconditional, so no iteration is needed. -/
+private theorem det_ne_zero_content_one (M : Matrix (Fin 2) (Fin 2) ℤ)
+    (hcont : content M = 1) (hdet : M.det ≠ 0) :
+    ∃ (U V : (Matrix (Fin 2) (Fin 2) ℤ)ˣ) (δ : ℤ),
+      (U : Matrix (Fin 2) (Fin 2) ℤ) * M * (V : Matrix (Fin 2) (Fin 2) ℤ) =
+        Matrix.diagonal ![1, δ] := by
+  obtain ⟨t, ht⟩ := exists_good_t M hcont hdet
+  obtain ⟨A, hA⟩ := exists_unit_mulVec_gcd (M 0 0 + t * M 0 1) (M 1 0 + t * M 1 1)
+  rw [ht] at hA
+  push_cast at hA
+  have hBunit : IsUnit !![(1 : ℤ), 0; t, 1] :=
+    (Matrix.isUnit_iff_isUnit_det _).mpr (by rw [Matrix.det_fin_two_of]; simp)
+  set N : Matrix (Fin 2) (Fin 2) ℤ :=
+    (A : Matrix (Fin 2) (Fin 2) ℤ) * M * !![(1 : ℤ), 0; t, 1] with hN
+  have hw : M.mulVec ![1, t] = ![M 0 0 + t * M 0 1, M 1 0 + t * M 1 1] := by
+    funext i
+    fin_cases i <;>
+      (simp [Matrix.mulVec, Matrix.vecHead, Matrix.vecTail]; ring)
+  have hNcol : ∀ i, N i 0 =
+      ((A : Matrix (Fin 2) (Fin 2) ℤ) * M).mulVec ![(1 : ℤ), t] i := by
+    intro i
+    rw [hN, Matrix.mul_apply, Matrix.mulVec, dotProduct]
+    apply Finset.sum_congr rfl
+    intro k _
+    fin_cases k <;> simp
+  have hN00 : N 0 0 = 1 := by
+    rw [hNcol 0, ← Matrix.mulVec_mulVec, hw, hA]
+    rfl
+  have hN10 : N 1 0 = 0 := by
+    rw [hNcol 1, ← Matrix.mulVec_mulVec, hw, hA]
+    rfl
+  have hCunit : IsUnit !![(1 : ℤ), -(N 0 1); 0, 1] :=
+    (Matrix.isUnit_iff_isUnit_det _).mpr (by rw [Matrix.det_fin_two_of]; simp)
+  refine ⟨A, hBunit.unit * hCunit.unit, N 1 1, ?_⟩
+  rw [Units.val_mul, hBunit.unit_spec, hCunit.unit_spec, ← mul_assoc, ← hN]
+  ext i j
+  fin_cases i <;> fin_cases j <;>
+    simp [Matrix.mul_apply, Fin.sum_univ_two, hN00, hN10]
+
+/-- Existence of some nonneg chained diagonalization, nondegenerate case:
+factor out the content, diagonalize the content-1 part to `diag(1, δ)`,
+scale back (the chain `g ∣ gδ` is automatic), and fix the sign. -/
 theorem exists_chained_diagonalization_of_det_ne_zero
     (M : Matrix (Fin 2) (Fin 2) ℤ) (hdet : M.det ≠ 0) :
     ∃ (U V : (Matrix (Fin 2) (Fin 2) ℤ)ˣ) (x y : ℤ),
       (U : Matrix (Fin 2) (Fin 2) ℤ) * M * (V : Matrix (Fin 2) (Fin 2) ℤ) =
         Matrix.diagonal ![x, y] ∧ 0 ≤ x ∧ 0 ≤ y ∧ x ∣ y := by
-  sorry
+  have hM0 : M ≠ 0 := by
+    intro h
+    exact hdet (by rw [h]; simp)
+  have hg0 : content M ≠ 0 := fun h => hM0 ((content_eq_zero_iff M).mp h)
+  have hgpos : 0 < content M := lt_of_le_of_ne (content_nonneg M) (Ne.symm hg0)
+  set M₁ : Matrix (Fin 2) (Fin 2) ℤ :=
+    Matrix.of fun i j => M i j / content M with hM₁
+  have hsmul : M = content M • M₁ := by
+    ext i j
+    rw [hM₁]
+    simp only [Matrix.smul_apply, Matrix.of_apply, smul_eq_mul]
+    exact (Int.mul_ediv_cancel' ((dvd_content_iff M (content M)).mp dvd_rfl i j)).symm
+  have hcont₁ : content M₁ = 1 := by
+    apply mul_left_cancel₀ hg0
+    rw [mul_one, ← content_smul (content M) M₁ (content_nonneg M), ← hsmul]
+  have hdet₁ : M₁.det ≠ 0 := by
+    intro h
+    apply hdet
+    rw [hsmul, Matrix.det_smul, h, mul_zero]
+  obtain ⟨U, V, δ, hUV⟩ := det_ne_zero_content_one M₁ hcont₁ hdet₁
+  have hdiag : (U : Matrix (Fin 2) (Fin 2) ℤ) * M * (V : Matrix (Fin 2) (Fin 2) ℤ) =
+      Matrix.diagonal ![content M, content M * δ] := by
+    conv_lhs => rw [hsmul, Matrix.mul_smul, Matrix.smul_mul, hUV]
+    ext i j
+    fin_cases i <;> fin_cases j <;> simp [Matrix.diagonal]
+  rcases le_or_gt 0 δ with hδ | hδ
+  · exact ⟨U, V, content M, content M * δ, hdiag, hgpos.le,
+      mul_nonneg hgpos.le hδ, dvd_mul_right _ _⟩
+  · have hDunit : IsUnit !![(1 : ℤ), 0; 0, -1] :=
+      (Matrix.isUnit_iff_isUnit_det _).mpr
+        (by rw [Matrix.det_fin_two_of]; norm_num)
+    refine ⟨U, V * hDunit.unit, content M, -(content M * δ), ?_, hgpos.le,
+      neg_nonneg.mpr (mul_nonpos_of_nonneg_of_nonpos hgpos.le hδ.le),
+      dvd_neg.mpr (dvd_mul_right _ _)⟩
+    rw [Units.val_mul, hDunit.unit_spec, ← mul_assoc, hdiag]
+    ext i j
+    fin_cases i <;> fin_cases j <;>
+      simp [Matrix.mul_apply, Fin.sum_univ_two, Matrix.diagonal]
 
 theorem exists_chained_diagonalization (M : Matrix (Fin 2) (Fin 2) ℤ) :
     ∃ (U V : (Matrix (Fin 2) (Fin 2) ℤ)ˣ) (x y : ℤ),
