@@ -1,5 +1,6 @@
 import Mathlib
 import MatrixCategory.Content
+import MatrixCategory.Smith
 
 /-!
 # Structure of the kernel of `M mod n`
@@ -51,52 +52,11 @@ namespace MatrixCategory
 
 open Matrix
 
-/-- First Smith invariant of a 2×2 integer matrix: the gcd of the entries. -/
-def smithOne (M : Matrix (Fin 2) (Fin 2) ℤ) : ℕ :=
-  (content M).natAbs
+/-! ## The lemma DAG
 
-/-- Second Smith invariant of a 2×2 integer matrix: `|det M| / smithOne M`.
-For `det M ≠ 0` this is exact division (see `content_sq_dvd_det`); for
-`det M = 0` it is `0`, which is the correct second invariant of a matrix of
-rank ≤ 1. -/
-def smithTwo (M : Matrix (Fin 2) (Fin 2) ℤ) : ℕ :=
-  (M.det).natAbs / smithOne M
-
-/-- The square of the content divides the determinant (2×2 case): the content
-divides every entry, and `det` is a sum of products of two entries. This is
-what makes `smithTwo` an exact division. -/
-theorem content_sq_dvd_det (M : Matrix (Fin 2) (Fin 2) ℤ) :
-    content M ^ 2 ∣ M.det := by
-  have h := (dvd_content_iff M (content M)).mp dvd_rfl
-  rw [Matrix.det_fin_two, sq]
-  exact dvd_sub (mul_dvd_mul (h 0 0) (h 1 1)) (mul_dvd_mul (h 0 1) (h 1 0))
-
-theorem smithOne_sq_dvd (M : Matrix (Fin 2) (Fin 2) ℤ) :
-    smithOne M ^ 2 ∣ (M.det).natAbs := by
-  have := content_sq_dvd_det M
-  rw [← Int.natAbs_dvd_natAbs, Int.natAbs_pow] at this
-  exact this
-
-/-- The Smith invariants form a divisibility chain: `d₁ ∣ d₂`. -/
-theorem smithOne_dvd_smithTwo (M : Matrix (Fin 2) (Fin 2) ℤ) :
-    smithOne M ∣ smithTwo M := by
-  rcases eq_or_ne M.det 0 with hdet | hdet
-  · simp [smithTwo, hdet]
-  · have hsq := smithOne_sq_dvd M
-    have h1 : smithOne M ∣ (M.det).natAbs := dvd_trans (dvd_pow_self _ two_ne_zero) hsq
-    rw [smithTwo, Nat.dvd_div_iff_mul_dvd h1, ← sq]
-    exact hsq
-
-/-! ## The lemma DAG -/
-
-/-- **L1 (the crux).** Every 2×2 integer matrix is diagonalizable by unimodular
-matrices with the explicit Smith invariants on the diagonal. All the number
-theory of the kernel theorem lives here. -/
-theorem exists_smith_diagonalization (M : Matrix (Fin 2) (Fin 2) ℤ) :
-    ∃ U V : (Matrix (Fin 2) (Fin 2) ℤ)ˣ,
-      (U : Matrix (Fin 2) (Fin 2) ℤ) * M * (V : Matrix (Fin 2) (Fin 2) ℤ) =
-        Matrix.diagonal ![(smithOne M : ℤ), (smithTwo M : ℤ)] := by
-  sorry
+The Smith invariants (`smithOne`, `smithTwo`) and L1
+(`exists_smith_diagonalization`) live in `MatrixCategory.Smith`;
+the remaining leaves L2–L4 are below. -/
 
 /-- **L2.** Multiplying by units on either side does not change the kernel of
 `mulVecLin`, up to additive isomorphism: the equivalence is `v ↦ Q.mulVec v`. -/
