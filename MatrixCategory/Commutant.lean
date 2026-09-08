@@ -453,4 +453,59 @@ theorem MObj.two_dvd_index_iff {a p : ℤ} (hp : Prime p) (hodd : Odd p)
       mul_left_cancel₀ hp.ne_zero (by linear_combination hdet + (c + p * e) * he)
     exact IsUnit.of_mul_eq_one (e * e) h1.symm
 
+/-! ## Toward `prp:complexorderwendodegp`: the conductor is prime to `p` -/
+
+/-- The index squared divides the discriminant:
+`scalarGap A ² ∣ (trace A)² - 4·det A`, since the discriminant equals
+`(A₀₀ - A₁₁)² + 4·A₀₁·A₁₀` and the gap divides all three non-scalar
+entries. -/
+theorem scalarGap_sq_dvd_disc (A : Matrix (Fin 2) (Fin 2) ℤ) :
+    ((scalarGap A : ℕ) : ℤ) ^ 2 ∣ A.trace ^ 2 - 4 * A.det := by
+  rw [Matrix.trace_fin_two, Matrix.det_fin_two]
+  have h3 : (A 0 0 + A 1 1) ^ 2 - 4 * (A 0 0 * A 1 1 - A 0 1 * A 1 0) =
+      (A 1 1 - A 0 0) ^ 2 + 4 * (A 0 1 * A 1 0) := by ring
+  rw [h3]
+  refine dvd_add ?_ ?_
+  · rw [sq, sq]
+    exact mul_dvd_mul (scalarGap_dvd₃ A) (scalarGap_dvd₃ A)
+  · rw [sq]
+    exact Dvd.dvd.mul_left (mul_dvd_mul (scalarGap_dvd₁ A) (scalarGap_dvd₂ A)) 4
+
+/-- **Toward `prp:complexorderwendodegp`, matrix layer**: for `A ∈ 𝓜(a, p)`
+with `p` an odd prime, `p` does not divide the index `[End(A) : ℤ[A]]` —
+"an order with an endomorphism of degree `p` has conductor prime to `p`".
+Route: `p ∣ gap` would give `p² ∣ a² - 4p`, hence `p ∣ a`, hence `p² ∣ 4p`,
+hence `p ∣ 4`, impossible for `p` odd. -/
+theorem MObj.not_dvd_scalarGap {a p : ℤ} (hp : Prime p) (hodd : Odd p)
+    (A : MObj a p) : ¬p ∣ ((scalarGap A.mat : ℕ) : ℤ) := by
+  intro hdvd
+  have hsq : ((scalarGap A.mat : ℕ) : ℤ) ^ 2 ∣ a ^ 2 - 4 * p := by
+    have := scalarGap_sq_dvd_disc A.mat
+    rwa [A.trace_eq, A.det_eq] at this
+  have hp2 : p ^ 2 ∣ a ^ 2 - 4 * p := dvd_trans (pow_dvd_pow_of_dvd hdvd 2) hsq
+  have hpa2 : p ∣ a ^ 2 := by
+    have h1 : p ∣ a ^ 2 - 4 * p := dvd_trans (dvd_pow_self p two_ne_zero) hp2
+    have h4 : a ^ 2 = (a ^ 2 - 4 * p) + 4 * p := by ring
+    rw [h4]
+    exact dvd_add h1 (Dvd.dvd.mul_left dvd_rfl 4)
+  have hpa : p ∣ a := hp.dvd_of_dvd_pow hpa2
+  have hp4 : p ^ 2 ∣ 4 * p := by
+    have h5 : (4 : ℤ) * p = a ^ 2 - (a ^ 2 - 4 * p) := by ring
+    rw [h5]
+    exact dvd_sub (pow_dvd_pow_of_dvd hpa 2) hp2
+  have hpdvd4 : p ∣ 4 := by
+    obtain ⟨k, hk⟩ := hp4
+    exact ⟨k, mul_left_cancel₀ hp.ne_zero (by linear_combination hk)⟩
+  have hpn : p.natAbs.Prime := Int.prime_iff_natAbs_prime.mp hp
+  have hn4 : p.natAbs ∣ 4 := by
+    have := Int.natAbs_dvd_natAbs.mpr hpdvd4
+    simpa using this
+  have hn2 : p.natAbs = 2 := by
+    have hdvd2 : p.natAbs ∣ 2 :=
+      ((Nat.Prime.dvd_mul hpn).mp (by rw [show 2 * 2 = 4 from rfl]; exact hn4)).elim
+        id id
+    exact (Nat.prime_dvd_prime_iff_eq hpn Nat.prime_two).mp hdvd2
+  obtain ⟨m, hm⟩ := hodd
+  rcases Int.natAbs_eq_iff.mp hn2 with h | h <;> omega
+
 end MatrixCategory
