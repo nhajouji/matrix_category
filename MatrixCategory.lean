@@ -3,3 +3,4 @@ import MatrixCategory.Content
 import MatrixCategory.KernelStructure
 import MatrixCategory.Cat
 import MatrixCategory.QF
+import MatrixCategory.Commutant

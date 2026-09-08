@@ -48,6 +48,14 @@ contains no `sorry`.**
   the classical change-of-variables action on forms, twisted by `det P` —
   strictly for `P ∈ SL₂(ℤ)`. Hence conjugacy classes in `𝓜(α)` correspond
   to proper equivalence classes of forms.
+- **The commutant index formula and 2-torsion criterion**
+  (`Commutant.lean`): for non-scalar `A`, the quotient of the commutant
+  `End(A) = {M : MA = AM}` by `ℤ[A] = ℤ·1 + ℤ·A` is *cyclic* of order
+  `gcd(A₀₁, A₁₀, A₁₁ - A₀₀)` — the index is the content of the non-scalar
+  part (`commutant_quotient_equiv`, `index_adjoinInt_commutant`).
+  Consequently, for `det A` odd, `2 ∣ [End(A) : ℤ[A]]` iff `A ≡ 1 (mod 2)`
+  (`two_dvd_index_iff`) — the matrix layer of "all of `E[2]` is rational
+  iff the endomorphism-ring index `[𝒪_E : ℤ[π]]` is even".
 
 The statements are additionally validated by compiled-in `#guard`
 numerical sanity checks (brute-forced kernels over small `ℤ/nℤ`,
